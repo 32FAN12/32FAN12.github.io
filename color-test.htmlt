@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>测测你的印象色｜看看你留给世界的第一抹色彩</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+body{background:#f7f5f2;color:#333;min-height:100vh;padding:16px;}
+.container{max-width:480px;margin:0 auto;}
+.page{display:none;animation:fade 0.4s ease;}
+.page.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 4px 16px rgba(0,0,0,0.06);}
+.title{font-size:24px;font-weight:600;text-align:center;margin-bottom:10px;}
+.subtitle{text-align:center;color:#666;margin-bottom:28px;line-height:1.6;}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;background:#333;color:#fff;font-size:16px;font-weight:500;margin-top:12px;cursor:pointer;}
+.btn:active{opacity:0.85;}
+.option{padding:14px;border:1px solid #e4e4e4;border-radius:12px;margin-bottom:10px;background:#fff;text-align:left;font-size:15px;cursor:pointer;transition:0.2s;}
+.option:hover{border-color:#999;}
+.option.selected{border-color:#555;background:#f3f3f3;}
+.progress{height:6px;background:#eee;border-radius:99px;margin:16px 0;overflow:hidden;}
+.progress-bar{height:100%;background:#777;width:0%;transition:0.3s;}
+.question-text{font-size:17px;line-height:1.6;margin-bottom:20px;font-weight:500;}
+.result-color-block{width:100%;height:140px;border-radius:14px;margin-bottom:16px;}
+.result-name{text-align:center;font-size:22px;font-weight:600;margin-bottom:16px;}
+.result-desc{line-height:1.7;color:#444;margin-bottom:20px;}
+.desc-block{margin-bottom:10px;}
+.desc-label{font-weight:600;color:#333;}
+.color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px;}
+.small-color{height:44px;border-radius:8px;}
+.radar-wrap{width:100%;display:flex;justify-content:center;margin:16px 0 24px;}
+#radarCanvas{width:320px;height:320px;max-width:100%;}
+.radar-tip{font-size:13px;color:#777;text-align:center;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- 封面页 -->
+  <div class="page active" id="page-start">
+    <div class="card">
+      <h1 class="title">测测你的印象色</h1>
+      <p class="subtitle">看看你留给世界的第一抹色彩<br>通过选择，解锁属于你的专属人格印象色</p>
+      <button class="btn" onclick="startTest()">开始测试</button>
+    </div>
+  </div>
+
+  <!-- 答题页面 -->
+  <div class="page" id="page-question">
+    <div class="card">
+      <div class="progress">
+        <div class="progress-bar" id="bar"></div>
+      </div>
+      <div class="question-text" id="q-text"></div>
+      <div id="opt-wrap"></div>
+      <button class="btn" id="next-btn" disabled onclick="nextQuestion()">下一题</button>
+    </div>
+  </div>
+
+  <!-- 结果页 -->
+  <div class="page" id="page-result">
+    <div class="card">
+      <div class="result-color-block" id="main-color"></div>
+      <div class="result-name" id="color-name"></div>
+      <div class="result-desc" id="color-text"></div>
+      <div class="radar-tip">人格六维雷达图</div>
+      <div class="radar-wrap">
+        <canvas id="radarCanvas"></canvas>
+      </div>
+      <div class="color-grid" id="grid-all"></div>
+      <button class="btn" style="margin-top:24px" onclick="restart()">重新测试</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 六个雷达维度
+const radarLabels = ["共情力","外向活力","边界感","稳定性","洞察力","决断力"];
+
+// 9个印象色，文案已经拆分为【核心印象】【内在特质】【小短板】【相处建议】
+const colorList = [
+  {
+    name:"暖白",
+    color:"#f8f7f4",
+    text:{
+      core:"留给别人的第一感觉舒服无害，是很容易让人放下防备的类型。",
+      inner:"共情力很强，习惯性优先照顾他人感受，擅长安静倾听别人的烦恼。",
+      flaw:"习惯迁就他人，很容易默默内耗，不太懂得拒绝别人。",
+      tip:"和你相处贵在真诚，请不要随意消耗你的善意。"
+    },
+    score:1,
+    radar:[9,4,3,7,7,3]
+  },
+  {
+    name:"浅杏橙",
+    color:"#f9d4b8",
+    text:{
+      core:"自带松弛温暖的氛围感，亲和力拉满，和你相处没有压力。",
+      inner:"热爱新鲜事物，乐于表达分享，很容易带动身边人的情绪。",
+      flaw:"热情来得快褪去也快，对待事情容易三分钟热度。",
+      tip:"适合一起去体验新鲜有趣的小事，保持轻松自在的节奏。"
+    },
+    score:2,
+    radar:[7,9,4,5,5,4]
+  },
+  {
+    name:"柠檬黄",
+    color:"#ffe670",
+    text:{
+      core:"第一眼元气明亮，活泼外放，是人群里自带闪光点的存在。",
+      inner:"好奇心旺盛，讨厌沉闷死板，愿意主动探索好玩的事物。",
+      flaw:"耐心偏弱，很难长期沉下心去做枯燥重复的事情。",
+      tip:"给你充足的自由空间，不要用条条框框束缚你。"
+    },
+    score:3,
+    radar:[6,10,5,4,6,5]
+  },
+  {
+    name:"蒂芙尼蓝",
+    color:"#81d8d0",
+    text:{
+      core:"气质优雅清醒，审美在线，自带距离适中的高级感。",
+      inner:"理智克制，遇事冷静，不喜欢情绪化争吵，边界感清晰。",
+      flaw:"很难主动袒露脆弱，别人很难真正走进你的内心深处。",
+      tip:"尊重你的边界感，慢慢来，不要急于推进关系。"
+    },
+    score:4,
+    radar:[5,4,9,7,8,7]
+  },
+  {
+    name:"森林绿",
+    color:"#689f74",
+    text:{
+      core:"给人踏实安心的感觉，是大家愿意信任、依靠的类型。",
+      inner:"情绪平稳温和，重视安全感，不喜欢突如其来的变动。",
+      flaw:"性格偏保守，不太愿意主动冒险、尝试未知的选择。",
+      tip:"适合细水长流、稳定长久的陪伴，不用刻意制造惊喜。"
+    },
+    score:5,
+    radar:[7,4,6,10,6,6]
+  },
+  {
+    name:"葡萄紫",
+    color:"#9268a8",
+    text:{
+      core:"细腻又深刻，第一眼安静内敛，拥有很强的氛围感。",
+      inner:"洞察力出众，精神世界丰富敏感，可以捕捉别人忽略的细微情绪。",
+      flaw:"思虑偏重，习惯反复琢磨一件事，很容易胡思乱想。",
+      tip:"接纳你的敏感，愿意静下心来认真倾听你的想法。"
+    },
+    score:6,
+    radar:[9,3,6,5,10,4]
+  },
+  {
+    name:"炭黑",
+    color:"#333333",
+    text:{
+      core:"自带冷静气场，目标感强，有主见，不容易随波逐流。",
+      inner:"习惯独立扛事，能力强，不喜欢示弱、依赖别人求助。",
+      flaw:"自带疏离感，初次见面容易让人觉得不好接近。",
+      tip:"保持平等尊重，不要随意干涉你的决定和节奏。"
+    },
+    score:7,
+    radar:[3,3,10,6,7,10]
+  },
+  {
+    name:"玫瑰红",
+    color:"#d8687c",
+    text:{
+      core:"热烈直白，爱恨分明，情绪表达真诚外放，不喜欢伪装客套。",
+      inner:"敢爱敢恨，讨厌虚伪圆滑，愿意直白表达自己的喜恶。",
+      flaw:"情绪上头的时候容易冲动，说出没有斟酌的话。",
+      tip:"和你相处最好坦率直接，不要拐弯抹角、猜来猜去。"
+    },
+    score:8,
+    radar:[7,8,4,4,6,8]
+  },
+  {
+    name:"灰调银",
+    color:"#b9c2c8",
+    text:{
+      core:"从容中立，情绪克制平稳，让人觉得稳重靠谱。",
+      inner:"擅长换位思考，不喜冲突，懂得平衡各方人际关系。",
+      flaw:"很少展露真实立场，相处久了也容易让人看不透。",
+      tip:"需要足够的时间建立信任，慢慢相处才能看见真实的你。"
+    },
+    score:9,
+    radar:[6,5,7,8,7,6]
+  }
+];
+
+// 12道测试题目
+const questions = [
+  {q:"聚会里你更偏向？",opts:["安静坐在角落观察别人","主动和大家搭话带动氛围","跟着熟人节奏，不主动不抗拒","觉得嘈杂想早点离开"]},
+  {q:"遇到计划被打乱，你的第一反应？",opts:["有点焦虑，努力尽快调整","觉得新鲜，可以顺势玩别的","轻微不爽，但可以接受","烦躁，尽量想办法恢复原计划"]},
+  {q:"别人向你倾诉负面情绪，你通常？",opts:["认真倾听，共情安慰","帮对方想解决办法","适当安慰，保持分寸","不太擅长处理，想快速结束话题"]},
+  {q:"你更喜欢哪种生活节奏？",opts:["安稳规律，变化越少越好","丰富多变，经常有新体验","劳逸结合，动静平衡","高效紧凑，目标优先"]},
+  {q:"做选择的时候，你更相信？",opts:["内心感受和直觉","当下的喜好心情","权衡利弊，理性分析","过往经验，稳妥优先"]},
+  {q:"朋友评价你，最可能是？",opts:["温柔好说话","有趣很会玩","冷静有分寸","独立有主见"]},
+  {q:"对于冲突矛盾，你的态度？",opts:["尽量妥协避免争吵","直接说出想法沟通","保持距离，冷处理","分出对错，解决问题"]},
+  {q:"空闲的时候，你更愿意？",opts:["看书、发呆、独处充电","出门逛街探店、认识新朋友","培养一个固定小爱好","学习提升、完成待办"]},
+  {q:"你更接受别人如何赞美你？",opts:["温柔善良","有趣元气","清醒通透","靠谱强大"]},
+  {q:"面对别人的请求，你习惯？",opts:["不忍心拒绝","看心情决定","评估自己能力再答复","不想做直接拒绝"]},
+  {q:"你偏爱哪种氛围感环境？",opts:["柔和安静的居家小店","热闹明亮的集市","简约清冷的空间","低调质感的场所"]},
+  {q:"长期相处，你最在意？",opts:["对方是否懂得体谅","相处能不能开心自在","互相尊重，保留边界","对方是否靠谱守信"]},
+];
+
+let currentQ = 0;
+let userAnswer = [];
+let selectedOpt = null;
+
+function startTest(){
+  switchPage("page-question");
+  renderQuestion();
+}
+function renderQuestion(){
+  const q = questions[currentQ];
+  document.getElementById("q-text").innerText = q.q;
+  const wrap = document.getElementById("opt-wrap");
+  wrap.innerHTML = "";
+  selectedOpt = null;
+  document.getElementById("next-btn").disabled = true;
+  q.opts.forEach((txt,i)=>{
+    const div = document.createElement("div");
+    div.className = "option";
+    div.innerText = txt;
+    div.onclick = ()=>{
+      document.querySelectorAll(".option").forEach(o=>o.classList.remove("selected"));
+      div.classList.add("selected");
+      selectedOpt = i+1;
+      document.getElementById("next-btn").disabled = false;
+    }
+    wrap.appendChild(div);
+  })
+  const percent = (currentQ / questions.length)*100;
+  document.getElementById("bar").style.width = percent+"%";
+}
+function nextQuestion(){
+  userAnswer.push(selectedOpt);
+  currentQ++;
+  if(currentQ >= questions.length){
+    calcResult();
+    switchPage("page-result");
+    return;
+  }
+  renderQuestion();
+}
+function calcResult(){
+  let sum = userAnswer.reduce((a,b)=>a+b,0);
+  let idx;
+  if(sum <=12) idx=0;
+  else if(sum <=20) idx=1;
+  else if(sum <=28) idx=2;
+  else if(sum <=36) idx=3;
+  else if(sum <=44) idx=4;
+  else if(sum <=52) idx=5;
+  else if(sum <=60) idx=6;
+  else if(sum <=68) idx=7;
+  else idx=8;
+  const res = colorList[idx];
+  document.getElementById("main-color").style.background = res.color;
+  document.getElementById("color-name").innerText = `你的专属印象色：${res.name}`;
+  // 组装分段文案
+  const html = `
+    <div class="desc-block"><span class="desc-label">【核心印象】</span>${res.text.core}</div>
+    <div class="desc-block"><span class="desc-label">【内在特质】</span>${res.text.inner}</div>
+    <div class="desc-block"><span class="desc-label">【小短板】</span>${res.text.flaw}</div>
+    <div class="desc-block"><span class="desc-label">【相处建议】</span>${res.text.tip}</div>
+  `;
+  document.getElementById("color-text").innerHTML = html;
+  drawRadar(res.radar, res.color);
+  // 渲染全部9色小色卡
+  const grid = document.getElementById("grid-all");
+  grid.innerHTML = "";
+  colorList.forEach(c=>{
+    const d = document.createElement("div");
+    d.className="small-color";
+    d.style.background = c.color;
+    d.title = c.name;
+    grid.appendChild(d);
+  })
+}
+
+// 绘制六边形雷达图
+function drawRadar(data, fillColor){
+  const canvas = document.getElementById("radarCanvas");
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width = 320;
+  const h = canvas.height = 320;
+  const cx = w/2;
+  const cy = h/2;
+  const r = 110;
+  ctx.clearRect(0,0,w,h);
+  const count = radarLabels.length;
+  // 外圈六边形骨架
+  for(let ring=1;ring<=5;ring++){
+    ctx.beginPath();
+    for(let i=0;i<=count;i++){
+      const angle = Math.PI*2*i/count - Math.PI/2;
+      const rr = r * ring /5;
+      const x = cx + Math.cos(angle)*rr;
+      const y = cy + Math.sin(angle)*rr;
+      i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle="#e2e2e2";
+    ctx.lineWidth=1;
+    ctx.stroke();
+  }
+  // 轴线+文字
+  for(let i=0;i<count;i++){
+    const angle = Math.PI*2*i/count - Math.PI/2;
+    const x = cx + Math.cos(angle)*r;
+    const y = cy + Math.sin(angle)*r;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(x,y);
+    ctx.strokeStyle="#ddd";
+    ctx.stroke();
+    ctx.fillStyle="#555";
+    ctx.font="13px system-ui";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    const tx = cx + Math.cos(angle)*(r+22);
+    const ty = cy + Math.sin(angle)*(r+22);
+    ctx.fillText(radarLabels[i], tx, ty);
+  }
+  // 绘制用户数据多边形
+  ctx.beginPath();
+  for(let i=0;i<count;i++){
+    const angle = Math.PI*2*i/count - Math.PI/2;
+    const val = data[i]/10;
+    const x = cx + Math.cos(angle)*r*val;
+    const y = cy + Math.sin(angle)*r*val;
+    i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = fillColor + "60";
+  ctx.fill();
+  ctx.strokeStyle = fillColor;
+  ctx.lineWidth=2;
+  ctx.stroke();
+}
+
+function restart(){
+  currentQ=0;
+  userAnswer=[];
+  switchPage("page-start");
+}
+function switchPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+</script>
+</body>
+</html>
