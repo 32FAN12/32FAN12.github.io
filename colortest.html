@@ -6,250 +6,517 @@
 <title>你的印象色测试报告</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:"PingFang SC",sans-serif}
-body{background:#faf6ee;color:#333;padding:20px;max-width:720px;margin:0 auto}
+body{background:#faf6ee;color:#333;padding:20px;max-width:760px;margin:0 auto}
 .title{text-align:center;font-size:28px;font-weight:bold;margin-bottom:8px}
-.subtitle{text-align:center;color:#666;margin-bottom:30px}
+.subtitle{text-align:center;color:#666;margin-bottom:24px}
 .page{display:none}
 .page.active{display:block}
+
+/* 版本选择页 */
+.version-box{display:flex;gap:16px;justify-content:center;margin-top:30px;flex-wrap:wrap}
+.version-card{width:220px;background:#fff;padding:22px 18px;border-radius:18px;box-shadow:0 2px 10px #00000009;text-align:center;cursor:pointer;transition:0.2s;border:2px solid transparent}
+.version-card:hover{border-color:#ffc888;background:#fff9ef}
+.version-card h3{margin-bottom:8px}
+.version-card p{font-size:14px;color:#666;line-height:1.6}
+
 .q-item{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px #00000008}
 .q-title{font-size:16px;margin-bottom:14px;font-weight:500}
 .opt{padding:12px 16px;border:1px solid #eee;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:0.2s}
 .opt:hover{border-color:#ffc888;background:#fff9ef}
 .opt.selected{border-color:#ff9f43;background:#fff2e2}
 .btns{margin-top:24px;text-align:center}
-button{padding:12px 28px;border:none;border-radius:99px;background:#ffc888;color:#222;font-size:16px;cursor:pointer}
+button{padding:12px 28px;border:none;border-radius:99px;background:#ffc888;color:#222;font-size:16px;cursor:pointer;margin:0 6px}
 button:disabled{background:#ddd;cursor:not-allowed}
+
 .result-card{background:#fff;border-radius:20px;padding:24px;margin-bottom:20px}
 .color-tag{display:inline-block;padding:6px 14px;border-radius:99px;color:#fff;font-weight:bold;margin-bottom:12px}
-.canvas-wrap{width:100%;max-width:400px;margin:16px auto;display:block}
+.color-slogan{font-size:18px;font-weight:500;margin-bottom:6px}
+.secondary{color:#888;font-size:14px;margin-top:8px}
+.score-text{background:#f8f5f0;padding:12px;border-radius:12px;margin-bottom:16px;font-size:14px;line-height:1.6}
+.radar-desc{margin:10px 0 12px 0;color:#555;font-size:14px;text-align:center}
+.canvas-wrap{width:100%;margin:16px auto;display:block}
 canvas{width:100%;display:block}
 .desc{line-height:1.7;color:#444;margin-top:12px}
-.radar-desc{margin:10px 0 12px 0;color:#555;font-size:14px}
-.score-text{background:#f8f5f0;padding:12px;border-radius:12px;margin-bottom:16px;font-size:14px;line-height:1.6}
-.secondary{color:#888;font-size:14px;margin-top:8px}
+.desc.precise{text-align:left}
+.desc.precise h4{margin-top:18px;margin-bottom:8px;color:#444;font-size:16px}
+.desc.precise p{margin-bottom:10px}
+strong{color:#d86b2a;}
 </style>
 </head>
 <body>
 <div class="title">你的印象色测试报告</div>
 <div class="subtitle">选择你本能习惯的样子，不是理想中想要成为的自己</div>
 
-<div id="page-quiz" class="page active">
+<!-- 版本选择页 -->
+<div id="page-select" class="page active">
+<div class="version-box">
+<div class="version-card" onclick="startTest('fast')">
+<h3>快速版｜10题</h3>
+<p>短平快，快速捕捉核心气质<br>适合随手测试，结果精简</p>
+</div>
+<div class="version-card" onclick="startTest('precise')">
+<h3>精确版｜28题</h3>
+<p>多场景深度设问，参考MBTI出题逻辑<br>分层解析性格、压力反应与成长方向</p>
+</div>
+</div>
+</div>
+
+<!-- 答题页 -->
+<div id="page-quiz" class="page">
 <div id="q-wrap"></div>
 <div class="btns">
 <button id="submit-btn" disabled>查看测试结果</button>
 </div>
 </div>
 
+<!-- 结果页 -->
 <div id="page-result" class="page">
 <div class="result-card">
 <div id="color-name" class="color-tag"></div>
-<div id="color-slogan"></div>
+<div id="color-slogan" class="color-slogan"></div>
 <div class="secondary">辅印象色：<span id="sub-color"></span></div>
 <div class="score-text" id="score-box"></div>
 <div class="radar-desc">雷达维度：共情力｜边界感｜行动力｜审慎度｜感知力｜内省力</div>
 <div class="canvas-wrap">
-<canvas id="radar-canvas" height="400"></canvas>
+<canvas id="radar-canvas" height="440"></canvas>
 </div>
 <div class="desc" id="color-detail"></div>
-</div>
 <div class="btns">
 <button onclick="restartTest()">重新测试</button>
+</div>
 </div>
 </div>
 
 <script>
 const radarLabels = ["共情力","边界感","行动力","审慎度","感知力","内省力"]
-// 原型向量 [共情,边界,行动,审慎,感知,内省]
 const colorPrototype = {
-"暖白":{vec:[80,35,45,60,55,65],bg:"#fcfbf6",text:"#333",slogan:"温和包容",detail:`核心气质：共情力强，善于照顾他人感受，是人群里的安定剂
-深度解析：你天然拥有情绪承接能力，习惯优先照顾氛围、体谅别人难处，很少主动制造冲突。你善于接纳不同人的差异，愿意做关系里托底、安抚的角色。
-优势：极高情绪觉察力，温和有同理心，冲突里擅长缓冲矛盾，给别人很强安全感。
-成长盲区：容易过度共情、消耗自己；不擅长拒绝他人，容易牺牲自身需求；遇到需要强硬决断的场景容易犹豫。
-相处提示：和你相处不用紧绷，你擅长倾听；但亲近的人需要主动留意你的需求，不要默认你可以无限包容。`},
-"浅杏橙":{vec:[70,45,75,40,60,40],bg:"#ffd7b5",text:"#333",slogan:"乐观亲和",detail:`核心气质：热情松弛，表达自然，总能把平淡氛围变得轻快
-深度解析：你自带轻松感，社交对你不是负担。你擅长用轻松的方式带动气氛，不喜欢沉重紧绷的关系，习惯用乐观视角看待事情。
-优势：亲和力强，社交无距离感，很容易带动团队氛围，擅长破冰。
-成长盲区：有时会回避沉重矛盾，习惯用“打哈哈”避开问题；深度内省不足，容易忽略别人隐藏的细腻情绪。
-相处提示：和你相处轻松舒服；如果遇到严肃问题，需要你沉下心来直面冲突，不要习惯性回避。`},
-"柠檬黄":{vec:[45,50,85,30,75,45],bg:"#ffe65c",text:"#333",slogan:"明亮活跃",detail:`核心气质：好奇心强，喜欢新鲜事物，愿意带动身边人行动
-深度解析：你天生向往变化、新鲜感，讨厌一成不变的重复。你乐于发起新尝试，愿意带动大家一起体验有趣的事。
-优势：创造力强，行动力快，乐于探索，很适合开拓型、创意类事情。
-成长盲区：耐心偏弱，容易三分钟热度；长期枯燥、重复的事务很容易让你倦怠，计划的持续性不足。
-相处提示：和你在一起永远不缺新鲜感；伙伴需要帮你一起稳住长期节奏，避免想法很多落地很少。`},
-"蒂芙尼蓝":{vec:[50,80,50,55,70,60],bg:"#47ccd4",text:"#fff",slogan:"优雅清醒",detail:`核心气质：审美敏锐，边界清晰，重视真诚与克制的表达
-深度解析：你很清楚自己的边界，不喜欢拥挤、越界的关系。你偏爱克制、有质感的表达，讨厌浮夸、泛滥的情绪。你清醒理性，习惯和外界保持舒服距离。
-优势：审美品味突出，情绪稳定克制，懂得尊重彼此边界，看人看事通透冷静。
-成长盲区：容易下意识和他人保持距离，给人冷淡疏离感；情绪很少外放，别人很难读懂你的内心。
-相处提示：尊重你的私人空间是最重要的；你不需要高频热闹社交，偏爱高质量、克制真诚的关系。`},
-"森林绿":{vec:[60,55,40,85,45,50],bg:"#62b872",text:"#fff",slogan:"稳定可靠",detail:`核心气质：耐心踏实，情绪稳定，是关系与团队中的安全力量
-深度解析：你信奉稳定和长久，做事循序渐进，重视承诺。你不喜欢冒进，习惯稳稳托住整个局面，是团队里最让人放心的基石。
-优势：责任心强、靠谱守信，情绪波动小，长期执行力稳定。
-成长盲区：抗拒突发变化，面对突如其来的变动容易焦虑；不太愿意冒险尝试新方案，容易困在固有习惯里。
-相处提示：你是非常值得信赖的伙伴；遇到变化时，可以试着给自己一点弹性，不必强求一切可控。`},
-"葡萄紫":{vec:[55,65,35,45,80,85],bg:"#856fc9",text:"#fff",slogan:"敏感深刻",detail:`核心气质：洞察力强，想象力丰富，能看见别人忽略的细节
-深度解析：你的感知通道比大多数人细腻，很容易捕捉文字、氛围、表情背后潜藏的情绪。你喜欢向内思考，享受独处的精神世界。
-优势：共情细腻、直觉敏锐，擅长捕捉细节、感知氛围感，想象力丰富。
-成长盲区：高敏感容易内耗，容易反复咀嚼负面细节；很容易沉浸在自己思绪里，和现实节奏脱节。
-相处提示：你需要充足独处时间回血；身边人尽量不要强迫你快速社交、快速做出表态。`},
-"炭黑":{vec:[35,80,75,60,40,45],bg:"#222222",text:"#fff",slogan:"独立决断",detail:`核心气质：目标感强，不依赖他人，习惯用结果证明自己
-深度解析：你做决定优先看目标、效率和结果，不喜欢被情绪裹挟。你自主意识很强，遇到事情第一反应是自己解决，很少求助别人。
-优势：意志力强、目标清晰，抗压能力强，关键时刻可以果断拍板。
-成长盲区：容易忽略他人情绪感受，太看重效率，有时显得强硬；不习惯示弱，压力全部自己扛。
-相处提示：和你沟通直接讲重点最高效；你可以试着看见情绪价值，不是所有事情都只看结果。`},
-"玫瑰红":{vec:[60,50,80,40,65,50],bg:"#f04b72",text:"#fff",slogan:"热烈直接",detail:`核心气质：爱憎分明，行动力强，会为重要的人和事主动争取
-深度解析：你的情绪和态度都很直白，不喜欢迂回拉扯。认定重要的目标、重要的人，你会主动争取，不被动等待。
-优势：行动力迅猛，立场清晰，敢于争取，有感染力，关键时刻敢站出来。
-成长盲区：情绪爆发力强，容易冲动表态；耐心不足，在需要长期缓慢铺垫的事情上容易急躁。
-相处提示：你讨厌拐弯抹角；冲突来临时，可以先短暂停顿，避免情绪上头做出冲动决定。`},
+"暖白":{vec:[80,35,45,60,55,65],bg:"#fcfbf6",text:"#333",slogan:"温和包容",weight:1.0,
+short:`你习惯照顾身边人的情绪，是圈子里稳定的“缓冲者”。
+优势：共情敏锐，很会体谅别人；短板：容易心软，不懂拒绝，持续消耗自己。`,
+precise:`<h4>你平时是什么状态</h4>
+你很在意氛围和谐，不喜欢冲突。别人难受的时候，你会下意识接住对方情绪，愿意耐心倾听包容。这份善意是本能，不是刻意讨好。
+<p><strong>核心短板：边界感偏弱，常常优先别人，委屈自己。</strong></p>
+
+<h4>你的能力分布特点</h4>
+共情、感知、内省力比较突出；行动力偏向被动配合；做决定时会习惯性迁就他人。
+
+<h4>压力上来时，你会变成这样</h4>
+你很少当场发火。积攒太多委屈后，会悄悄沉默、慢慢疏远对方。很多人察觉不到你的疲惫，还以为你一直都好说话。
+
+<h4>和什么样的人相处舒服</h4>
+适合懂得体谅、愿意顾及你感受的伙伴；和目标感极强、只看重结果的人长期相处，很容易持续内耗。
+
+<h4>可以试着这样调整自己</h4>
+分清“我愿意体谅”和“我必须承担”。温柔不需要无限供给，练习温和拒绝，不用靠牺牲自己维持关系。`},
+
+"浅杏橙":{vec:[70,45,75,40,60,40],bg:"#ffd7b5",text:"#333",slogan:"乐观亲和",weight:1.0,
+short:`擅长带动气氛，社交对你不算负担。喜欢轻松舒服的节奏，本能回避沉重矛盾。
+优势：亲和力强，擅长破冰；短板：习惯淡化问题，不爱深挖矛盾。`,
+precise:`<h4>你平时是什么状态</h4>
+你自带松弛感，很容易和陌生人聊开。你偏爱轻松愉快的氛围，一旦话题变得压抑沉重，会下意识转移话题、开玩笑缓和气氛。
+<p><strong>核心短板：害怕沉重冲突，容易拖延棘手问题。</strong></p>
+
+<h4>你的能力分布特点</h4>
+共情、行动力不错；感知力中等；审慎度、向内反思的意愿偏低，更看重当下开不开心。
+
+<h4>压力上来时，你会变成这样</h4>
+遇到麻烦第一反应不是直面，而是找点乐子散心。如果问题一直悬着，你会假装事情没那么严重。
+
+<h4>和什么样的人相处舒服</h4>
+适合轻松随性、不爱揪着细节复盘的朋友；习惯深挖情绪、反复复盘矛盾的人，容易觉得你敷衍。
+
+<h4>可以试着这样调整自己</h4>
+轻松是很好的特质，但不是所有矛盾都可以绕开。学着偶尔接住沉重话题，允许关系里存在不愉快。`},
+
+"柠檬黄":{vec:[45,50,85,30,75,45],bg:"#ffe65c",text:"#333",slogan:"明亮活跃",weight:0.75,
+short:`好奇心强，喜欢新鲜体验，讨厌一成不变。很愿意带头尝试新东西。
+优势：想法多、启动快；短板：耐心不足，容易三分钟热度。`,
+precise:`<h4>你平时是什么状态</h4>
+单调重复的事情很容易消磨你的热情。你享受开启新项目、尝试新玩法的新鲜感，对未知抱有很高期待。
+<p><strong>核心短板：擅长开始，不擅长长期坚持收尾。</strong></p>
+
+<h4>你的能力分布特点</h4>
+行动力、感知力是强项；共情、边界中等；审慎度偏低，不喜欢死板固定的规则。
+
+<h4>压力上来时，你会变成这样</h4>
+被锁死在枯燥流程里时，很难沉下心，会不断找新兴趣转移注意力，原有计划容易半途而废。
+
+<h4>和什么样的人相处舒服</h4>
+适合灵活自由、鼓励试错的环境；和凡事讲究计划、按部就班的人配合，容易被贴上浮躁的标签。
+
+<h4>可以试着这样调整自己</h4>
+区分一时兴起的新鲜感，和真正想坚持的目标。给自己设置简单的固定节点，保留探索空间，同时守住重要事情的收尾。`},
+
+"蒂芙尼蓝":{vec:[50,80,50,55,70,60],bg:"#47ccd4",text:"#fff",slogan:"优雅清醒",weight:1.0,
+short:`边界感清晰，看人通透冷静。尊重彼此独立，反感别人随意侵入你的私人空间。
+优势：情绪稳定、拎得清；短板：容易显得疏离，别人很难走进内心。`,
+precise:`<h4>你平时是什么状态</h4>
+你心里有清晰的界限：什么属于自己，什么属于别人。你能看懂别人的情绪，但不会随便卷入，反感情绪绑架和过度亲近。
+<p><strong>核心短板：习惯保持距离，很少主动敞开心扉。</strong></p>
+
+<h4>你的能力分布特点</h4>
+边界感最强，感知、内省力不错；共情中等，不会无底线承接别人情绪。
+
+<h4>压力上来时，你会变成这样</h4>
+有人持续越界索取，你不会争吵，而是安静关上表达通道，慢慢拉开距离，属于冷静抽离型。
+
+<h4>和什么样的人相处舒服</h4>
+最适合懂得给你独处空间、不强迫交心的人；高共情、时刻需要情绪回应的人，常会觉得你冷淡。
+
+<h4>可以试着这样调整自己</h4>
+边界不等于围墙。面对信任的人，可以适度放开一点表达，不必一直维持清醒克制的外壳。`},
+
+"森林绿":{vec:[60,55,40,85,45,50],bg:"#62b872",text:"#fff",slogan:"稳定可靠",weight:0.75,
+short:`踏实靠谱，重视承诺，是大家可以托底的角色。偏爱稳定可控的节奏。
+优势：责任心强、情绪稳；短板：害怕突发变化，抗拒失控。`,
+precise:`<h4>你平时是什么状态</h4>
+安全感来自稳定和确定感。答应别人的事会尽量做到，习惯用成熟稳妥的方式做事，不喜欢无准备的冒险。
+<p><strong>核心短板：计划被打乱时容易焦虑，不愿变通。</strong></p>
+
+<h4>你的能力分布特点</h4>
+审慎度是你的王牌；共情中上；行动力偏保守，不喜欢即兴改动。
+
+<h4>压力上来时，你会变成这样</h4>
+突发变动会让你不安，下意识想拉回原来的秩序，有时会固执坚持旧方案，不是固执，是害怕失控。
+
+<h4>和什么样的人相处舒服</h4>
+适合节奏稳定、提前沟通变化的伙伴；随性即兴、随时改方向的人，很容易让你持续焦虑。
+
+<h4>可以试着这样调整自己</h4>
+接受不是所有事情都能提前安排。可以小范围尝试新方式，不用事事都追求百分百稳妥。`},
+
+"葡萄紫":{vec:[55,65,35,45,80,85],bg:"#856fc9",text:"#fff",slogan:"敏感深刻",weight:0.75,
+short:`感知细腻，能捕捉别人忽略的细微情绪。想法丰富，习惯向内思考。
+优势：直觉敏锐、共情细腻；短板：容易反复琢磨细节，陷入精神内耗。`,
+precise:`<h4>你平时是什么状态</h4>
+你的感知很灵敏，一句话、一个表情、氛围的微妙变化都能抓住。你喜欢沉浸在自己的思绪里，嘈杂环境消耗你很快。
+<p><strong>核心短板：容易反复回味负面感受，困住自己。</strong></p>
+
+<h4>你的能力分布特点</h4>
+感知力、内省力双高；边界感中等；行动力偏弱，更擅长感受思考，而不是快速落地。
+
+<h4>压力上来时，你会变成这样</h4>
+负面信息会在脑子里反复回放，不断脑补潜台词，大多时候独自消化，不会向外发火。
+
+<h4>和什么样的人相处舒服</h4>
+适合安静低刺激、允许你独处回血的环境；节奏快、冲突多的环境，对你消耗巨大。
+
+<h4>可以试着这样调整自己</h4>
+分清“我感受到的感受”和“客观事实”。给自己建立信息过滤，不必接住所有细碎情绪。`},
+
+"炭黑":{vec:[35,80,75,60,40,45],bg:"#222222",text:"#fff",slogan:"独立决断",weight:0.75,
+short:`目标优先，习惯自己解决问题，不喜欢被情绪裹挟。看重效率和结果。
+优势：抗压强、做事果断；短板：不习惯示弱，容易忽略他人感受。`,
+precise:`<h4>你平时是什么状态</h4>
+做判断优先看目标、可行性，情绪放在次要位置。遇到难题第一想法是自己搞定，反感没有意义的情绪拉扯。
+<p><strong>核心短板：习惯硬扛，很难主动求助。</strong></p>
+
+<h4>你的能力分布特点</h4>
+边界感、行动力突出，审慎度不错；共情偏低，不太擅长捕捉细腻情绪信号。
+
+<h4>压力上来时，你会变成这样</h4>
+压力越大越沉默加速，一个人扛下任务；如果别人用情绪干扰目标推进，会直接推开，容易被误会冷漠。
+
+<h4>和什么样的人相处舒服</h4>
+适合高效沟通、以结果为先的合作；很需要情绪安抚的人，常常觉得你不近人情。
+
+<h4>可以试着这样调整自己</h4>
+效率和情绪价值并不冲突。适当留意身边人的感受，允许自己求助，独立不必等于硬撑。`},
+
+"玫瑰红":{vec:[60,50,80,40,65,50],bg:"#f04b72",text:"#fff",slogan:"热烈直接",weight:1.0,
+short:`爱憎分明，表达直白，在意的人和事会主动争取。讨厌猜来猜去。
+优势：真诚果敢、感染力强；短板：情绪来得快，容易冲动说话。`,
+precise:`<h4>你平时是什么状态</h4>
+你的喜好和不满很少拐弯，不喜欢迂回试探。认定重要的目标，愿意主动投入争取。
+<p><strong>核心短板：情绪上头时容易脱口而出，事后后悔。</strong></p>
+
+<h4>你的能力分布特点</h4>
+行动力最强，共情、感知中上；审慎度偏低，情绪外放直接。
+
+<h4>压力上来时，你会变成这样</h4>
+冲突出现容易立刻表达情绪，先表态、后冷静复盘，属于先爆发，再反思的类型。
+
+<h4>和什么样的人相处舒服</h4>
+适合直白沟通、不玩心眼的关系；习惯委婉回避冲突的人，很容易被你的直白刺伤。
+
+<h4>可以试着这样调整自己</h4>
+保留真诚直接，给自己加一个短暂停顿。争执时先稳住情绪再开口，减少冲动带来的麻烦。`}
 }
 
-const questions = [
-{q:"小组产生矛盾，你更倾向？",a:"优先安抚双方情绪，调和冲突",b:"优先理清目标，推动事情落地",scoreA:{"共情力":7,"感知力":3},scoreB:{"行动力":7,"审慎度":3}},
-{q:"周末空闲，你更愿意？",a:"和朋友出门探索新鲜事物",b:"独自安静待着，沉浸自己的世界",scoreA:{"行动力":7,"感知力":3},scoreB:{"边界感":7,"内省力":3}},
-{q:"收到别人负面评价，第一反应？",a:"琢磨对方话语背后隐藏的情绪",b:"判断是否有用，无价值就快速放下",scoreA:{"内省力":7,"共情力":3},scoreB:{"边界感":7,"审慎度":3}},
-{q:"安排长期任务，你习惯？",a:"做好计划分步推进，稳扎稳打",b:"灵活即兴发挥，随过程调整节奏",scoreA:{"审慎度":7,"边界感":3},scoreB:{"感知力":7,"行动力":3}},
-{q:"和新朋友相处，你倾向？",a:"热情松弛，主动搭话拉近距离",b:"保持距离，慢慢观察熟悉彼此",scoreA:{"共情力":7,"行动力":3},scoreB:{"边界感":7,"审慎度":3}},
-{q:"身边人情绪低落的时候，你会？",a:"安静陪伴倾听，接纳对方情绪",b:"直接帮对方梳理、给出解决方案",scoreA:{"共情力":7,"内省力":3},scoreB:{"审慎度":7,"行动力":3}},
-{q:"面对一件没有尝试过的新鲜事物？",a:"好奇，愿意主动带头体验",b:"先观望评估，稳妥之后再参与",scoreA:{"行动力":7,"感知力":3},scoreB:{"审慎度":7,"边界感":3}},
-{q:"表达想法的时候，你更喜欢？",a:"直白坦诚，爱憎分明不绕弯",b:"委婉克制，照顾对方感受",scoreA:{"边界感":7,"行动力":3},scoreB:{"共情力":7,"审慎度":3}},
-{q:"闲暇时更容易被什么吸引？",a:"氛围感、画面、细腻情绪意象",b:"热闹互动、可以一起玩的活动",scoreA:{"感知力":7,"内省力":3},scoreB:{"共情力":7,"行动力":3}},
-{q:"团队需要有人牵头扛责任，你？",a:"主动认领目标，自己拍板推进",b:"配合团队节奏，做好分内稳定托底",scoreA:{"行动力":7,"边界感":3},scoreB:{"审慎度":7,"共情力":3}},
-{q:"计划被意外打乱的时候？",a:"觉得新鲜，顺势调整方案",b:"感到不安，尽快拉回可控轨道",scoreA:{"感知力":7,"行动力":3},scoreB:{"审慎度":7,"边界感":3}},
-{q:"别人向你求助的时候？",a:"不忍心拒绝，优先体谅对方难处",b:"评估自身边界，量力而行不勉强",scoreA:{"共情力":7,"感知力":3},scoreB:{"边界感":7,"审慎度":3}},
-{q:"欣赏一件作品，你优先关注？",a:"美感、氛围、情绪表达",b:"实用性、落地效果、是否靠谱",scoreA:{"感知力":7,"内省力":3},scoreB:{"审慎度":7,"行动力":3}},
-{q:"情绪上头的时候，你一般？",a:"直接释放，情绪来得快去得快",b:"向内消化，独自梳理不外露",scoreA:{"行动力":7,"感知力":3},scoreB:{"内省力":7,"边界感":3}},
-{q:"一群人气氛冷场尴尬，你？",a:"主动抛话题，带动气氛破冰",b:"安静旁观，等待自然缓和",scoreA:{"共情力":7,"行动力":3},scoreB:{"边界感":7,"审慎度":3}},
-{q:"做重大选择时，你优先参考？",a:"内心感受、人和情感价值",b:"客观收益、效率、规则结果",scoreA:{"内省力":7,"共情力":3},scoreB:{"审慎度":7,"边界感":3}},
-{q:"关于个人边界，你更认同？",a:"边界清晰，不喜欢他人过度介入",b:"包容柔软，愿意接纳别人走进自己",scoreA:{"边界感":7,"内省力":3},scoreB:{"共情力":7,"感知力":3}},
-{q:"向往的理想生活是？",a:"安稳长久，细水长流确定感",b:"不断拥有新故事、新体验",scoreA:{"审慎度":7,"共情力":3},scoreB:{"感知力":7,"行动力":3}},
+// ✅ 题库：题目文字不变，改为正负双向计分
+const questionBank = {
+fast:[
+{q:"小组产生矛盾，你更倾向？",a:"优先安抚双方情绪，调和冲突",b:"优先理清目标，推动事情落地",
+scoreA:{"共情力":7,"感知力":3,"行动力":-3,"审慎度":-2},
+scoreB:{"行动力":7,"审慎度":3,"共情力":-3,"感知力":-2}},
+{q:"周末空闲，你更愿意？",a:"和朋友出门探索新鲜事物",b:"独自安静待着，沉浸自己的世界",
+scoreA:{"行动力":7,"感知力":3,"边界感":-3,"内省力":-2},
+scoreB:{"边界感":7,"内省力":3,"行动力":-3,"感知力":-2}},
+{q:"收到别人负面评价，第一反应？",a:"琢磨对方话语背后隐藏的情绪",b:"判断是否有用，无价值就快速放下",
+scoreA:{"内省力":7,"共情力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"内省力":-3,"共情力":-2}},
+{q:"安排长期任务，你习惯？",a:"做好计划分步推进，稳扎稳打",b:"灵活即兴发挥，随过程调整节奏",
+scoreA:{"审慎度":7,"边界感":3,"感知力":-3,"行动力":-2},
+scoreB:{"感知力":7,"行动力":3,"审慎度":-3,"边界感":-2}},
+{q:"和新朋友相处，你倾向？",a:"热情松弛，主动搭话拉近距离",b:"保持距离，慢慢观察熟悉彼此",
+scoreA:{"共情力":7,"行动力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"行动力":-2}},
+{q:"面对一件没有尝试过的新鲜事物？",a:"好奇，愿意主动带头体验",b:"先观望评估，稳妥之后再参与",
+scoreA:{"行动力":7,"感知力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"行动力":-3,"感知力":-2}},
+{q:"表达想法的时候，你更喜欢？",a:"直白坦诚，爱憎分明不绕弯",b:"委婉克制，照顾对方感受",
+scoreA:{"边界感":7,"行动力":3,"共情力":-3,"审慎度":-2},
+scoreB:{"共情力":7,"审慎度":3,"边界感":-3,"行动力":-2}},
+{q:"别人向你求助的时候？",a:"不忍心拒绝，优先体谅对方难处",b:"评估自身边界，量力而行不勉强",
+scoreA:{"共情力":7,"感知力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"感知力":-2}},
+{q:"情绪上头的时候，你一般？",a:"直接释放，情绪来得快去得快",b:"向内消化，独自梳理不外露",
+scoreA:{"行动力":7,"感知力":3,"内省力":-3,"边界感":-2},
+scoreB:{"内省力":7,"边界感":3,"行动力":-3,"感知力":-2}},
+{q:"做重大选择时，你优先参考？",a:"内心感受、人和情感价值",b:"客观收益、效率、规则结果",
+scoreA:{"内省力":7,"共情力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"内省力":-3,"共情力":-2}},
+],
+precise:[
+{q:"小组产生矛盾，你更倾向？",a:"优先安抚双方情绪，调和冲突",b:"优先理清目标，推动事情落地",
+scoreA:{"共情力":7,"感知力":3,"行动力":-3,"审慎度":-2},
+scoreB:{"行动力":7,"审慎度":3,"共情力":-3,"感知力":-2}},
+{q:"周末空闲，你更愿意？",a:"和朋友出门探索新鲜事物",b:"独自安静待着，沉浸自己的世界",
+scoreA:{"行动力":7,"感知力":3,"边界感":-3,"内省力":-2},
+scoreB:{"边界感":7,"内省力":3,"行动力":-3,"感知力":-2}},
+{q:"收到别人负面评价，第一反应？",a:"琢磨对方话语背后隐藏的情绪",b:"判断是否有用，无价值就快速放下",
+scoreA:{"内省力":7,"共情力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"内省力":-3,"共情力":-2}},
+{q:"安排长期任务，你习惯？",a:"做好计划分步推进，稳扎稳打",b:"灵活即兴发挥，随过程调整节奏",
+scoreA:{"审慎度":7,"边界感":3,"感知力":-3,"行动力":-2},
+scoreB:{"感知力":7,"行动力":3,"审慎度":-3,"边界感":-2}},
+{q:"和新朋友相处，你倾向？",a:"热情松弛，主动搭话拉近距离",b:"保持距离，慢慢观察熟悉彼此",
+scoreA:{"共情力":7,"行动力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"行动力":-2}},
+{q:"身边人情绪低落的时候，你会？",a:"安静陪伴倾听，接纳对方情绪",b:"直接帮对方梳理、给出解决方案",
+scoreA:{"共情力":7,"内省力":3,"审慎度":-3,"行动力":-2},
+scoreB:{"审慎度":7,"行动力":3,"共情力":-3,"内省力":-2}},
+{q:"面对一件没有尝试过的新鲜事物？",a:"好奇，愿意主动带头体验",b:"先观望评估，稳妥之后再参与",
+scoreA:{"行动力":7,"感知力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"行动力":-3,"感知力":-2}},
+{q:"表达想法的时候，你更喜欢？",a:"直白坦诚，爱憎分明不绕弯",b:"委婉克制，照顾对方感受",
+scoreA:{"边界感":7,"行动力":3,"共情力":-3,"审慎度":-2},
+scoreB:{"共情力":7,"审慎度":3,"边界感":-3,"行动力":-2}},
+{q:"闲暇时更容易被什么吸引？",a:"氛围感、画面、细腻情绪意象",b:"热闹互动、可以一起玩的活动",
+scoreA:{"感知力":7,"内省力":3,"共情力":-3,"行动力":-2},
+scoreB:{"共情力":7,"行动力":3,"感知力":-3,"内省力":-2}},
+{q:"团队需要有人牵头扛责任，你？",a:"主动认领目标，自己拍板推进",b:"配合团队节奏，做好分内稳定托底",
+scoreA:{"行动力":7,"边界感":3,"审慎度":-3,"共情力":-2},
+scoreB:{"审慎度":7,"共情力":3,"行动力":-3,"边界感":-2}},
+{q:"计划被意外打乱的时候？",a:"觉得新鲜，顺势调整方案",b:"感到不安，尽快拉回可控轨道",
+scoreA:{"感知力":7,"行动力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"感知力":-3,"行动力":-2}},
+{q:"别人向你求助的时候？",a:"不忍心拒绝，优先体谅对方难处",b:"评估自身边界，量力而行不勉强",
+scoreA:{"共情力":7,"感知力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"感知力":-2}},
+{q:"欣赏一件作品，你优先关注？",a:"美感、氛围、情绪表达",b:"实用性、落地效果、是否靠谱",
+scoreA:{"感知力":7,"内省力":3,"审慎度":-3,"行动力":-2},
+scoreB:{"审慎度":7,"行动力":3,"感知力":-3,"内省力":-2}},
+{q:"情绪上头的时候，你一般？",a:"直接释放，情绪来得快去得快",b:"向内消化，独自梳理不外露",
+scoreA:{"行动力":7,"感知力":3,"内省力":-3,"边界感":-2},
+scoreB:{"内省力":7,"边界感":3,"行动力":-3,"感知力":-2}},
+{q:"一群人气氛冷场尴尬，你？",a:"主动抛话题，带动气氛破冰",b:"安静旁观，等待自然缓和",
+scoreA:{"共情力":7,"行动力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"行动力":-2}},
+{q:"做重大选择时，你优先参考？",a:"内心感受、人和情感价值",b:"客观收益、效率、规则结果",
+scoreA:{"内省力":7,"共情力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"内省力":-3,"共情力":-2}},
+{q:"关于个人边界，你更认同？",a:"边界清晰，不喜欢他人过度介入",b:"包容柔软，愿意接纳别人走进自己",
+scoreA:{"边界感":7,"内省力":3,"共情力":-3,"感知力":-2},
+scoreB:{"共情力":7,"感知力":3,"边界感":-3,"内省力":-2}},
+{q:"向往的理想生活是？",a:"安稳长久，细水长流确定感",b:"不断拥有新故事、新体验",
+scoreA:{"审慎度":7,"共情力":3,"感知力":-3,"行动力":-2},
+scoreB:{"感知力":7,"行动力":3,"审慎度":-3,"共情力":-2}},
+{q:"当你和信任的人产生分歧，你通常？",a:"愿意敞开感受，慢慢沟通磨合",b:"摆明立场，不希望反复拉扯",
+scoreA:{"共情力":7,"内省力":3,"边界感":-3,"行动力":-2},
+scoreB:{"边界感":7,"行动力":3,"共情力":-3,"内省力":-2}},
+{q:"别人夸奖你，你的第一感受？",a:"开心，也会思考对方是不是客套",b:"收下赞美，不会过度琢磨背后意图",
+scoreA:{"内省力":7,"感知力":3,"审慎度":-3,"共情力":-2},
+scoreB:{"共情力":7,"审慎度":3,"内省力":-3,"感知力":-2}},
+{q:"需要长期持续投入一件枯燥事情，你？",a:"靠内在感受、热爱支撑自己",b:"依靠固定时间表和奖惩推进",
+scoreA:{"感知力":7,"内省力":3,"审慎度":-3,"行动力":-2},
+scoreB:{"审慎度":7,"行动力":3,"感知力":-3,"内省力":-2}},
+{q:"看到陌生人发生争执，你？",a:"不自觉留意双方情绪变化",b:"判断风险，不轻易卷入",
+scoreA:{"共情力":7,"感知力":3,"边界感":-3,"审慎度":-2},
+scoreB:{"边界感":7,"审慎度":3,"共情力":-3,"感知力":-2}},
+{q:"你更认可哪一种评价？",a:"这个人心思细腻，很懂别人",b:"这个人做事干脆，说到做到",
+scoreA:{"共情力":7,"内省力":3,"行动力":-3,"审慎度":-2},
+scoreB:{"行动力":7,"审慎度":3,"共情力":-3,"内省力":-2}},
+{q:"得知原定安排临时取消，你？",a:"好奇有什么别的可能性",b:"有点失落，需要重新规划",
+scoreA:{"感知力":7,"行动力":3,"审慎度":-3,"共情力":-2},
+scoreB:{"审慎度":7,"共情力":3,"感知力":-3,"行动力":-2}},
+{q:"朋友和你倾诉反复发生的烦恼，你？",a:"陪着共情，接纳他反复诉说",b:"帮他寻找可行办法跳出循环",
+scoreA:{"共情力":7,"感知力":3,"审慎度":-3,"行动力":-2},
+scoreB:{"审慎度":7,"行动力":3,"共情力":-3,"感知力":-2}},
+{q:"面对他人过度热情的示好，你？",a:"温和回应，但保持距离",b:"顺势拉近，友好回馈",
+scoreA:{"边界感":7,"内省力":3,"共情力":-3,"感知力":-2},
+scoreB:{"共情力":7,"感知力":3,"边界感":-3,"内省力":-2}},
+{q:"复盘一件做错的事，你最先关注？",a:"这件事带给自己的感受与反思",b:"哪里出错，下次如何规避",
+scoreA:{"内省力":7,"感知力":3,"审慎度":-3,"行动力":-2},
+scoreB:{"审慎度":7,"行动力":3,"内省力":-3,"感知力":-2}},
+{q:"你更容易被哪一类内容吸引？",a:"散文、诗歌、氛围感故事",b:"纪实科普、方法论、干货",
+scoreA:{"感知力":7,"内省力":3,"审慎度":-3,"边界感":-2},
+scoreB:{"审慎度":7,"边界感":3,"感知力":-3,"内省力":-2}},
 ]
+}
 
-let answers = Array(questions.length).fill(null)
-let dimScore = {"共情力":0,"边界感":0,"行动力":0,"审慎度":0,"感知力":0,"内省力":0}
+let testMode = "fast"
+let answers = []
+let questions = []
 
+function startTest(mode){
+testMode = mode
+questions = JSON.parse(JSON.stringify(questionBank[mode]))
+answers = Array(questions.length).fill(null)
+document.getElementById("page-select").classList.remove("active")
+document.getElementById("page-quiz").classList.add("active")
+renderQuiz()
+}
 function renderQuiz(){
-  const wrap = document.getElementById("q-wrap")
-  wrap.innerHTML=""
-  questions.forEach((item,idx)=>{
-    const div = document.createElement("div")
-    div.className="q-item"
-    div.innerHTML=`
-    <div class="q-title">${idx+1}. ${item.q}</div>
-    <div class="opt ${answers[idx]==='a'?'selected':''}" onclick="selectOpt(${idx},'a')">A. ${item.a}</div>
-    <div class="opt ${answers[idx]==='b'?'selected':''}" onclick="selectOpt(${idx},'b')">B. ${item.b}</div>
-    `
-    wrap.appendChild(div)
-  })
-  document.getElementById("submit-btn").disabled = answers.some(x=>x===null)
+const wrap = document.getElementById("q-wrap")
+wrap.innerHTML=""
+questions.forEach((item,idx)=>{
+const div = document.createElement("div")
+div.className="q-item"
+div.innerHTML=`
+<div class="q-title">${idx+1}. ${item.q}</div>
+<div class="opt ${answers[idx]==='a'?'selected':''}" onclick="selectOpt(${idx},'a')">A. ${item.a}</div>
+<div class="opt ${answers[idx]==='b'?'selected':''}" onclick="selectOpt(${idx},'b')">B. ${item.b}</div>
+`
+wrap.appendChild(div)
+})
+document.getElementById("submit-btn").disabled = answers.some(x=>x===null)
 }
 function selectOpt(i,v){
-  answers[i]=v
-  renderQuiz()
+answers[i]=v
+renderQuiz()
 }
 function calcDimension(){
-  dimScore = {"共情力":0,"边界感":0,"行动力":0,"审慎度":0,"感知力":0,"内省力":0}
-  for(let i=0;i<questions.length;i++){
-    const q = questions[i]
-    const sel = answers[i]
-    const add = sel==='a' ? q.scoreA : q.scoreB
-    for(let key in add){
-      dimScore[key] += add[key]
-    }
-  }
-  const maxRaw = 126
-  for(let k in dimScore){
-    dimScore[k] = Math.min(Math.round(dimScore[k]/maxRaw*100),100)
-  }
-  return dimScore
+let dimScore = {"共情力":50,"边界感":50,"行动力":50,"审慎度":50,"感知力":50,"内省力":50}
+for(let i=0;i<questions.length;i++){
+const q = questions[i]
+const sel = answers[i]
+const add = sel==='a' ? q.scoreA : q.scoreB
+for(let key in add){
+dimScore[key] += add[key]
 }
-// 欧氏距离计算，排序取最近两个
+}
+// 限制分数区间 0~100，防止越界
+for(let k in dimScore){
+dimScore[k] = Math.max(0, Math.min(100, dimScore[k]))
+}
+return dimScore
+}
+
+// ✅ 加权距离匹配：冷门色乘weight，放大命中范围
 function matchColorByDistance(d){
-  const userVec = radarLabels.map(k=>d[k])
-  const list = []
-  for(let name in colorPrototype){
-    const p = colorPrototype[name].vec
-    let dist = 0
-    for(let i=0;i<6;i++){
-      dist += Math.pow(userVec[i]-p[i],2)
-    }
-    dist = Math.sqrt(dist)
-    list.push({name,dist})
-  }
-  list.sort((a,b)=>a.dist - b.dist)
-  return {main:list[0].name,sub:list[1].name}
+const userVec = radarLabels.map(k=>d[k])
+const list = []
+for(let name in colorPrototype){
+const p = colorPrototype[name].vec
+let dist = 0
+for(let i=0;i<6;i++){
+dist += Math.pow(userVec[i]-p[i],2)
 }
+dist = Math.sqrt(dist)
+// 加权：距离 × weight，weight越小越容易命中
+dist = dist * colorPrototype[name].weight
+list.push({name,dist})
+}
+list.sort((a,b)=>a.dist - b.dist)
+return {main:list[0].name,sub:list[1].name}
+}
+
+// 雷达图（保持原有自适应逻辑不变）
 function drawRadar(dimData){
-  const canvas = document.getElementById("radar-canvas")
-  const ctx = canvas.getContext("2d")
-  const w = canvas.width = 400
-  const h = canvas.height = 400
-  const cx = w/2, cy=h/2, r=140
-  ctx.clearRect(0,0,w,h)
-  ctx.strokeStyle="#ddd"
-  ctx.fillStyle="#666"
-  ctx.font="14px sans-serif"
-  for(let ring=1;ring<=4;ring++){
-    ctx.beginPath()
-    for(let i=0;i<6;i++){
-      const ang = Math.PI*2/6*i - Math.PI/2
-      const rr = r * ring/4
-      const x = cx + Math.cos(ang)*rr
-      const y = cy + Math.sin(ang)*rr
-      i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y)
-    }
-    ctx.closePath()
-    ctx.stroke()
-  }
-  for(let i=0;i<6;i++){
-    const ang = Math.PI*2/6*i - Math.PI/2
-    const x = cx + Math.cos(ang)*r
-    const y = cy + Math.sin(ang)*r
-    ctx.beginPath()
-    ctx.moveTo(cx,cy)
-    ctx.lineTo(x,y)
-    ctx.stroke()
-    ctx.fillText(radarLabels[i],x+(Math.cos(ang)*12),y+(Math.sin(ang)*12))
-  }
-  const dataArr = radarLabels.map(k=>dimData[k])
-  ctx.beginPath()
-  ctx.fillStyle="rgba(255,160,70,0.25)"
-  ctx.strokeStyle="#ff9f43"
-  ctx.lineWidth=2
-  for(let i=0;i<6;i++){
-    const ang = Math.PI*2/6*i - Math.PI/2
-    const rr = r * dataArr[i]/100
-    const x = cx + Math.cos(ang)*rr
-    const y = cy + Math.sin(ang)*rr
-    i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y)
-  }
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
+const canvas = document.getElementById("radar-canvas")
+const ctx = canvas.getContext("2d")
+const w = canvas.width
+const h = canvas.height
+const cx = w / 2
+const cy = h / 2
+const r = Math.min(cx, cy) - 36
+ctx.clearRect(0,0,w,h)
+ctx.strokeStyle="#dddddd"
+ctx.fillStyle="#555555"
+ctx.font="15px sans-serif"
+
+const dataArr = radarLabels.map(k=>dimData[k])
+const currentMax = Math.max(...dataArr) || 1;
+
+for(let ring=1;ring<=4;ring++){
+ctx.beginPath()
+for(let i=0;i<6;i++){
+const ang = Math.PI*2/6*i - Math.PI/2
+const rr = r * ring/4
+const x = cx + Math.cos(ang)*rr
+const y = cy + Math.sin(ang)*rr
+i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y)
 }
+ctx.closePath()
+ctx.stroke()
+}
+for(let i=0;i<6;i++){
+const ang = Math.PI*2/6*i - Math.PI/2
+const x = cx + Math.cos(ang)*r
+const y = cy + Math.sin(ang)*r
+ctx.beginPath()
+ctx.moveTo(cx,cy)
+ctx.lineTo(x,y)
+ctx.stroke()
+const labelX = cx + Math.cos(ang)*(r+18)
+const labelY = cy + Math.sin(ang)*(r+18)
+ctx.fillText(radarLabels[i], labelX, labelY)
+}
+ctx.beginPath()
+ctx.fillStyle="rgba(255,160,70,0.25)"
+ctx.strokeStyle="#ff9f43"
+ctx.lineWidth=2
+for(let i=0;i<6;i++){
+const ang = Math.PI*2/6*i - Math.PI/2
+const ratio = dataArr[i] / currentMax
+const rr = r * ratio
+const x = cx + Math.cos(ang)*rr
+const y = cy + Math.sin(ang)*rr
+i===0 ? ctx.moveTo(x,y):ctx.lineTo(x,y)
+}
+ctx.closePath()
+ctx.fill()
+ctx.stroke()
+}
+
 function showResult(){
-  const dimData = calcDimension()
-  const {main,sub} = matchColorByDistance(dimData)
-  const meta = colorPrototype[main]
-  document.getElementById("color-name").innerText = main
-  document.getElementById("color-name").style.background = meta.bg
-  document.getElementById("color-name").style.color = meta.text
-  document.getElementById("color-slogan").innerText = meta.slogan
-  document.getElementById("sub-color").innerText = sub + "｜" + colorPrototype[sub].slogan
-  const scoreHtml = radarLabels.map(k=>`${k}：${dimData[k]}分`).join("｜")
-  document.getElementById("score-box").innerText = scoreHtml
-  document.getElementById("color-detail").innerText = meta.detail
-  drawRadar(dimData)
-  document.getElementById("page-quiz").classList.remove("active")
-  document.getElementById("page-result").classList.add("active")
+const dimData = calcDimension()
+const {main,sub} = matchColorByDistance(dimData)
+const meta = colorPrototype[main]
+document.getElementById("color-name").innerText = main
+document.getElementById("color-name").style.background = meta.bg
+document.getElementById("color-name").style.color = meta.text
+document.getElementById("color-slogan").innerText = meta.slogan
+document.getElementById("sub-color").innerText = sub + "｜" + colorPrototype[sub].slogan
+const scoreHtml = radarLabels.map(k=>`${k}：${dimData[k]}分`).join("｜")
+document.getElementById("score-box").innerText = scoreHtml
+if(testMode === "precise"){
+document.getElementById("color-detail").innerHTML = meta.precise
+document.getElementById("color-detail").classList.add("precise")
+}else{
+document.getElementById("color-detail").innerText = meta.short
+document.getElementById("color-detail").classList.remove("precise")
+}
+drawRadar(dimData)
+document.getElementById("page-quiz").classList.remove("active")
+document.getElementById("page-result").classList.add("active")
 }
 function restartTest(){
-  answers = Array(questions.length).fill(null)
-  renderQuiz()
-  document.getElementById("page-result").classList.remove("active")
-  document.getElementById("page-quiz").classList.add("active")
+document.getElementById("page-result").classList.remove("active")
+document.getElementById("page-select").classList.add("active")
 }
 document.getElementById("submit-btn").onclick = showResult
-renderQuiz()
 </script>
 </body>
 </html>
